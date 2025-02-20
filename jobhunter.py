@@ -2,7 +2,7 @@ import mysql.connector
 import time
 import json
 import requests
-from datetime import date
+from datetime import timedelta
 import html2text
 
 
@@ -18,14 +18,13 @@ def create_tables(cursor):
     # Creates table
     # Must set Title to CHARSET utf8 unicode Source: http://mysql.rjweb.org/doc.php/charcoll.
     # Python is in latin-1 and error (Incorrect string value: '\xE2\x80\xAFAbi...') will occur if Description is not in unicode format due to the json data
-    cursor.execute('''CREATE TABLE IF NOT EXISTS jobs (
-                        id INT PRIMARY KEY auto_increment, 
-                        job_id varchar(50) UNIQUE, 
-                        company varchar(300), 
-                        created_at DATE, 
-                        url varchar(3000), 
-                        title TEXT CHARACTER SET utf8, 
-                        description TEXT CHARACTER SET utf8);''')
+    cursor.execute('''CREATE TABLE IF NOT EXISTS jobs (id INT PRIMARY KEY auto_increment, 
+            job_id varchar(50) UNIQUE, 
+            company varchar(300), 
+            created_at DATE, 
+            url varchar(3000), 
+            title TEXT CHARACTER SET utf8, 
+            description TEXT CHARACTER SET utf8);''')
 
 
 
@@ -56,8 +55,6 @@ def add_new_job(cursor, jobdetails):
     return query_sql(cursor, query)
 
 
-
-
 # Check if new job
 def check_if_job_exists(cursor, jobdetails):
     ##Add your code here
@@ -70,6 +67,15 @@ def delete_job(cursor, jobdetails):
     query_delete = "DELETE FROM jobs WHERE JOB_id = %s"
     cursor.execute (query_delete, (job_id,))
     return query_sql(cursor, query_delete)
+
+# Delete jobs older than 14 days
+def delete_old_jobs(cursor):
+    fourteen_days_ago = datetime.now() - timedelta(days=14)
+    query_delete = "DELETE FROM jobs WHERE created_at < %s"
+    cursor.execute(query_delete, (fourteen_days_ago.date(),))
+    cursor.connection.commit()
+    print(f"Jobs older than 14 days have been deleted.")
+
 
 
 # Grab new jobs from a website, Parses JSON code and inserts the data into a list of dictionaries do not need to edit
