@@ -7,7 +7,6 @@ import html2text
 
 
 # Connect to database
-# You may need to edit the connect function based on your local settings.#I made a password for my database because it is important to do so. Also make sure MySQL server is running or it will not connect
 def connect_to_sql():
     conn = mysql.connector.connect(user='root', password='',
                                    host='127.0.0.1', database='cne340')
@@ -19,8 +18,15 @@ def create_tables(cursor):
     # Creates table
     # Must set Title to CHARSET utf8 unicode Source: http://mysql.rjweb.org/doc.php/charcoll.
     # Python is in latin-1 and error (Incorrect string value: '\xE2\x80\xAFAbi...') will occur if Description is not in unicode format due to the json data
-    cursor.execute('''CREATE TABLE IF NOT EXISTS jobs (id INT PRIMARY KEY auto_increment, Job_id varchar(50) , 
-    company varchar (300), Created_at DATE, url varchar(30000), Title LONGBLOB, Description LONGBLOB ); ''')
+    cursor.execute('''CREATE TABLE IF NOT EXISTS jobs (
+                        id INT PRIMARY KEY auto_increment, 
+                        job_id varchar(50) UNIQUE, 
+                        company varchar(300), 
+                        created_at DATE, 
+                        url varchar(3000), 
+                        title TEXT CHARACTER SET utf8, 
+                        description TEXT CHARACTER SET utf8);''')
+
 
 
 # Query the database.
@@ -35,10 +41,21 @@ def add_new_job(cursor, jobdetails):
     # extract all required columns
     description = html2text.html2text(jobdetails['description'])
     date = jobdetails['publication_date'][0:10]
-    query = cursor.execute("INSERT INTO jobs( Description, Created_at " ") "
-               "VALUES(%s,%s)", (  description, date))
-     # %s is what is needed for Mysqlconnector as SQLite3 uses ? the Mysqlconnector uses %s
+    query = """
+        INSERT INTO jobs (job_id, company, created_at, url, title, description) 
+        VALUES (%s, %s, %s, %s, %s, %s)
+    """
+    cursor.execute(query, (
+        jobdetails['job_id'],
+        jobdetails['company'],
+        date,
+        jobdetails['url'],
+        jobdetails['title'],
+        description
+    ))
     return query_sql(cursor, query)
+
+
 
 
 # Check if new job
@@ -49,9 +66,10 @@ def check_if_job_exists(cursor, jobdetails):
 
 # Deletes job
 def delete_job(cursor, jobdetails):
-    ##Add your code here
-    query = "UPDATE"
-    return query_sql(cursor, query)
+    job_id = jobdetails['job_id']
+    query_delete = "DELETE FROM jobs WHERE JOB_id = %s"
+    cursor.execute (query_delete, (job_id,))
+    return query_sql(cursor, query_delete)
 
 
 # Grab new jobs from a website, Parses JSON code and inserts the data into a list of dictionaries do not need to edit
@@ -79,11 +97,13 @@ def add_or_delete_job(jobpage, cursor):
         is_job_found = len(
         cursor.fetchall()) > 0  # https://stackoverflow.com/questions/2511679/python-number-of-rows-affected-by-cursor-executeselect
         if is_job_found:
+            print(f"Job with ID {jobdetails['job_id']} already exists.")
 
         else:
             # INSERT JOB
             # Add in your code here to notify the user of a new posting. This code will notify the new user
-
+            add_new_job(cursor, jobdetails)
+            print(f"New job with ID {jobdetails['job_id']} has been added.")
 
 
 # Setup portion of the program. Take arguments and set up the script
